@@ -1,0 +1,13 @@
+{
+  "name": "lumi-todo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "vendor": "cp -rf ./node_modules ./vendor"
+  },
+  "dependencies": {
+    "mqtt": "4.3.7"
+  },
+  "devDependencies": {}
+}
