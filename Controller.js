@@ -1,5 +1,8 @@
 const EventEmitter = require('events')
 const mqtt = require('mqtt')
+const os = require('os')
+
+const mac = os.networkInterfaces().wlan0[0].mac.replace(/:/g, '').toUpperCase()
 
 /** @typedef {import('./Service.js').Service} Service */
 /** @typedef {import('mqtt').Client} MQTTClient */
@@ -12,7 +15,7 @@ class Controller extends EventEmitter {
   /** @type {MQTTClient} */
   #client
 
-  #rootTopic = 'lumi-new'
+  #rootTopic = `lumi_${mac}`
 
   /**
    * @param {Service[]} services
