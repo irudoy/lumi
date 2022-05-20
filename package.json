@@ -4,7 +4,7 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "vendor": "cp -rf ./node_modules ./vendor"
+    "vendor": "rm -rf ./vendor && cp -rf ./node_modules ./vendor"
   },
   "dependencies": {
     "mqtt": "4.3.7"
