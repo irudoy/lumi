@@ -50,9 +50,9 @@ class Lightbulb extends Service {
   static id = 'LIGHTBULB'
 
   #handles = {
-    r: '/sys/class/leds/red/brightness',
-    g: '/sys/class/leds/green/brightness',
-    b: '/sys/class/leds/blue/brightness',
+    r: fs.openSync('/sys/class/leds/red/brightness', 'r+'),
+    g: fs.openSync('/sys/class/leds/green/brightness', 'r+'),
+    b: fs.openSync('/sys/class/leds/blue/brightness', 'r+'),
   }
 
   #stateRGB = new RGB(

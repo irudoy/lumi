@@ -5,7 +5,7 @@ const { Service } = require('../Service.js')
 class Button extends Service {
   static id = 'BUTTON'
 
-  #handle = '/dev/input/event0'
+  #path = '/dev/input/event0'
 
   init() {
     let t0 = 0
@@ -19,7 +19,7 @@ class Button extends Service {
       clickDuration: 300,
     }
 
-    const stream = fs.createReadStream(this.#handle, {
+    const stream = fs.createReadStream(this.#path, {
       flags: 'r',
       encoding: null,
       fd: null,

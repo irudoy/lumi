@@ -5,7 +5,7 @@ const { Service } = require('../Service.js')
 class LightSensor extends Service {
   static id = 'LIGHT_SENSOR'
 
-  #handle = '/sys/bus/iio/devices/iio:device0/in_voltage5_raw'
+  #handle = fs.openSync('/sys/bus/iio/devices/iio:device0/in_voltage5_raw', 'r')
 
   value = 0
 
