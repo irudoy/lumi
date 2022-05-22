@@ -16,6 +16,10 @@ import { Service } from '../Service.mjs'
 
 export class Lightbulb extends Service {
   static id = 'LIGHTBULB'
+  static topicStateGet = 'light'
+  static topicStateSet = 'light/set'
+  static topicRGBGet = 'light/rgb'
+  static topicRGBSet = 'light/rgb/set'
 
   /** @type {LightbulbDefaultOptions} */
   static defaultOptions = {
@@ -45,9 +49,9 @@ export class Lightbulb extends Service {
 
   // TODO: persist in fs
   #lastStateRGB = new RGB(
-    this.#stateRGB.r || 255,
-    this.#stateRGB.g || 255,
-    this.#stateRGB.b || 255,
+    255,
+    255,
+    255,
   )
 
   /** @type {Promise<void> | null} */
@@ -188,7 +192,7 @@ export class Lightbulb extends Service {
       this.#lastStateRGB.update(...rgb)
     }
 
-    this.controller.broadcast('light/rgb', this.#stateRGB.serializeMQTT())
+    this.controller.broadcast(Lightbulb.topicStateGet, this.#stateRGB.serializeMQTT())
   }
 
   /**
@@ -209,11 +213,14 @@ export class Lightbulb extends Service {
 
     this.#scheduleTransition()
 
-    this.controller.broadcast('light', this.#switchState ? 'true' : 'false')
+    this.controller.broadcast(Lightbulb.topicStateGet, this.#switchState ? 'true' : 'false')
   }
 
   init() {
-    this.controller.on('light/set', this.#handleSwitch.bind(this))
-    this.controller.on('light/rgb/set', this.#handleSetRGB.bind(this))
+    this.controller.on(Lightbulb.topicStateSet, this.#handleSwitch.bind(this))
+    this.controller.on(Lightbulb.topicRGBSet, this.#handleSetRGB.bind(this))
+
+    this.controller.broadcast(Lightbulb.topicStateGet, this.#switchState ? 'true' : 'false')
+    this.controller.broadcast(Lightbulb.topicRGBGet, this.#lastStateRGB.serializeMQTT())
   }
 }

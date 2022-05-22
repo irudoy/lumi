@@ -23,6 +23,10 @@ export class Controller extends EventEmitter {
   constructor(services) {
     super()
 
+    console.log('Starting Lumi...')
+
+    console.log('Connecting to the MQTT broker')
+
     this.#client = mqtt.connect('mqtt://192.168.1.63', {
       port: 44444,
       keepalive: 60,
@@ -53,7 +57,7 @@ export class Controller extends EventEmitter {
     this.#client.on('error', err => console.error(err))
 
     this.#client.on('message', (topic, message) => {
-      console.log(`Got message \`${message}\` for topic \`${topic}\``)
+      console.log(`-> Got message \`${message}\` for topic \`${topic}\``)
       this.emit(topic.replace(new RegExp(`^${this.#rootTopic}/`), ''), message.toString())
     })
 
@@ -75,6 +79,7 @@ export class Controller extends EventEmitter {
   broadcast(topic, message, options = {}) {
     this.#client.publish(`${this.#rootTopic}/${topic}`, message, options, (err) => {
       if (err) console.error('Publish failed', err)
+      console.log(`<- Sent message \`${message}\` for topic \`${this.#rootTopic}/${topic}\``)
     })
   }
 
