@@ -62,7 +62,7 @@ export class Controller extends EventEmitter {
       if (id === undefined) throw new Error('Service should have an ID')
       if (this.#servicesMap.has(id)) throw new Error(`Duplicated ID: ${id}`)
       this.#servicesMap.set(id, service.register(this))
-      service.init(this)
+      service.init()
     })
   }
 

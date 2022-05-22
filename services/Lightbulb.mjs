@@ -1,58 +1,29 @@
 import fs from 'fs'
 import { interpolateRgb } from 'd3-interpolate'
 
+import { handleError, sleep, RGB } from '../helpers.mjs'
 import { Service } from '../Service.mjs'
 
-class RGB {
-  /**
-   * @param {number} r
-   * @param {number} g
-   * @param {number} b
-   */
-  constructor(r, g, b) {
-    this.update(r, g, b)
-  }
+/**
+ * @typedef {Object} LightbulbOptions
+ *
+ * @prop {number=} transitionSpeedMs TODO Description
+ */
 
-  update(...args) {
-    const [rgb] = args
-    const [r, g, b] = args
-    if (rgb instanceof RGB) {
-      this.r = rgb.r
-      this.g = rgb.g
-      this.b = rgb.b
-    } else {
-      this.r = r
-      this.g = g
-      this.b = b
-    }
-  }
+/** @typedef {Required<LightbulbOptions>} LightbulbDefaultOptions */
 
-  /**
-   * @returns {[number, number, number]}
-   */
-  toArray() {
-    return [this.r, this.g, this.b]
-  }
-
-  toString() {
-    return `rgb(${this.r}, ${this.g}, ${this.b})`
-  }
-
-  serializeMQTT() {
-    return JSON.stringify({
-      R: this.r,
-      G: this.g,
-      B: this.b,
-    })
-  }
-
-  isOff() {
-    return this.r === 0 && this.g === 0 && this.b === 0
-  }
-}
+/** @typedef {import('../Controller.mjs')} Controller */
 
 export class Lightbulb extends Service {
   static id = 'LIGHTBULB'
+
+  /** @type {LightbulbDefaultOptions} */
+  static defaultOptions = {
+    transitionSpeedMs: 500
+  }
+
+  /** @type {LightbulbDefaultOptions} */ // TODO
+  #options
 
   #handles = {
     r: fs.openSync('/sys/class/leds/red/brightness', 'r+'),
@@ -79,81 +50,76 @@ export class Lightbulb extends Service {
     this.#stateRGB.b || 255,
   )
 
-  /** @type {Set<Promise<void>>} */
-  #tasks = new Set()
+  /** @type {Promise<void> | null} */
+  #currentTransition = null
+
+  #terminateTransition = false
 
   #switchState = false
 
-  getState() {
-    return {
-      ...this.#stateRGB,
-    }
-  }
-
   /**
-   *
-   * @param {NodeJS.ErrnoException | string | null} err
+   * @param {LightbulbOptions} options
    */
-  #handleError(err) {
-    if (err) {
-      console.error(err)
+  constructor(options = {}) {
+    super()
+    this.#options = {
+      ...Lightbulb.defaultOptions,
+      ...options,
     }
   }
 
   /**
-   * @param {string} path
+   * @param {fs.PathOrFileDescriptor} handle
    * @param {string} value
    * @returns {Promise<void>}
    */
-  #writeFile(path, value) {
+  #writeFile(handle, value) {
     return new Promise((resolve, reject) => {
-      fs.writeFile(path, value, (err) => {
+      fs.writeFile(handle, value, (err) => {
         if (err) reject(err)
         resolve()
       })
     })
   }
 
-  /**
-   * @param {string} handle
-   * @param {number} from
-   * @param {number} to
-   */
-  async #updateSmooth(handle, from, to) {
-    if (to === from) return
-    let i = from
-    while (i !== to) {
-      i = to > from ? i + 1 : i - 1
-      try {
-        await this.#writeFile(handle, String(i))
-      } catch (e) {
-        this.#handleError(e)
-        i = to
-      }
+  async #scheduleTransition() {
+    if (this.#currentTransition) {
+      this.#terminateTransition = true
+      await this.#currentTransition
+      this.#terminateTransition = false
     }
+
+    this.#currentTransition = this.#startTransition()
+    await this.#currentTransition
+    this.#currentTransition = null
   }
 
-  #updateLEDHardware() {
-    const rgbPrev = this.#prevStateRGB.toString()
-    const rgbNext = this.#stateRGB.toString()
-    const interpolation = interpolateRgb(rgbPrev, rgbNext)
+  async #startTransition() {
+    const getColor = interpolateRgb(this.#prevStateRGB.toString(), this.#stateRGB.toString())
 
-    console.log(
-      interpolation(0),
-      interpolation(0.5),
-      interpolation(1),
-    )
+    const frames = this.#options.transitionSpeedMs / 1000 * 60
+    const frameTime = 16.666 // 60 FPS
 
-    Promise.all(this.#tasks).finally(() => {
-      const p1 = this.#updateSmooth(this.#handles.r, this.#prevStateRGB.r, this.#stateRGB.r).then(() => this.#tasks.delete(p1))
-      this.#tasks.add(p1)
-      const p2 = this.#updateSmooth(this.#handles.g, this.#prevStateRGB.g, this.#stateRGB.g).then(() => this.#tasks.delete(p2))
-      this.#tasks.add(p2)
-      const p3 = this.#updateSmooth(this.#handles.b, this.#prevStateRGB.b, this.#stateRGB.b).then(() => this.#tasks.delete(p3))
-      this.#tasks.add(p3)
+    for (let i = 0; i < frames; i++) {
+      if (this.#terminateTransition) {
+        break
+      }
 
-      this.#prevStateRGB.update(this.#stateRGB)
-    })
+      const [, r, g, b] = getColor((i + 1) / frames).match(/rgb\((\d+), (\d+), (\d+)\)/)
+
+      Promise.all([
+        this.#writeFile(this.#handles.r, r),
+        this.#writeFile(this.#handles.g, g),
+        this.#writeFile(this.#handles.b, b),
+      ]).catch(e => {
+        handleError(e)
+        i = frames
+      })
+
+      this.#prevStateRGB.update(parseInt(r, 10), parseInt(g, 10), parseInt(b, 10))
+
+      await sleep(frameTime)
+    }
   }
 
   /**
@@ -189,7 +155,7 @@ export class Lightbulb extends Service {
         w: this.#castToFloat(W),
       }
     } catch (e) {
-      this.#handleError(e)
+      handleError(/** @type {Error} */ (e))
     }
     return data
   }
@@ -203,7 +169,7 @@ export class Lightbulb extends Service {
     const data = this.#parseMessage(message)
 
     if (!data) {
-      this.#handleError(`Unacceptable message: ${message}`)
+      handleError(`Unacceptable message: ${message}`)
       return
     }
 
@@ -211,13 +177,13 @@ export class Lightbulb extends Service {
     const rgb = [data.r, data.g, data.b]
 
     if (rgb.includes(null) || rgb.includes(undefined)) {
-      this.#handleError(`Unacceptable message: ${message}`)
+      handleError(`Unacceptable message: ${message}`)
       return
     }
 
     if (this.#switchState) {
       this.#stateRGB.update(...rgb)
-      this.#updateLEDHardware()
+      this.#scheduleTransition()
     } else {
       this.#lastStateRGB.update(...rgb)
     }
@@ -241,13 +207,13 @@ export class Lightbulb extends Service {
       this.#stateRGB.update(0, 0, 0)
     }
 
-    this.#updateLEDHardware()
+    this.#scheduleTransition()
 
     this.controller.broadcast('light', this.#switchState ? 'true' : 'false')
   }
 
-  init(controller) {
-    controller.on('light/set', this.#handleSwitch.bind(this))
-    controller.on('light/rgb/set', this.#handleSetRGB.bind(this))
+  init() {
+    this.controller.on('light/set', this.#handleSwitch.bind(this))
+    this.controller.on('light/rgb/set', this.#handleSetRGB.bind(this))
   }
 }

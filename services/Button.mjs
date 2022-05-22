@@ -10,9 +10,11 @@ export class Button extends Service {
   init() {
     let t0 = 0
     let t1 = 0
+    /** @type {NodeJS.Timer} */
     let timer = null
     let value = 0
 
+    /** @type {(value: number) => void} */
     const publish = (value) => this.controller.broadcast('button', String(value))
 
     const config = {

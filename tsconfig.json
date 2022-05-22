@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "dist/types",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "strictNullChecks": false,
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "allowJs": true,
+    "checkJs": true,
+    "module": "NodeNext"
+  }
+}

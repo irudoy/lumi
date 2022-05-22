@@ -23,10 +23,7 @@ export class Service {
     return this
   }
 
-  /**
-   * @param {Controller} instance
-   */
-  init(instance) {
+  init() {
     throw new Error('Not implemented')
   }
 }
