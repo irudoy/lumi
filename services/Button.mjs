@@ -1,5 +1,6 @@
 import fs from 'fs'
 
+import { handleError } from '../helpers.mjs'
 import { Service } from '../Service.mjs'
 
 export class Button extends Service {
@@ -60,6 +61,6 @@ export class Button extends Service {
       }
     })
 
-    stream.on('error', e => console.error(e))
+    stream.on('error', handleError)
   }
 }

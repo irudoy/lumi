@@ -10,11 +10,11 @@ export function sleep(ms) {
 }
 
 /**
- * @param {NodeJS.ErrnoException | string | null} err
+ * @param {(NodeJS.ErrnoException | string | null)[]} args
  */
-export function handleError(err) {
-  if (err) {
-    console.error(err)
+export function handleError(...args) {
+  if (args[0]) {
+    console.log(...args)
   }
 }
 
@@ -36,6 +36,17 @@ export class RGB {
   }
 
   /**
+   * @param {unknown} v
+   * @returns {number}
+   */
+  #validate(v) {
+    if (typeof v !== 'number' || Number.isNaN(v)) {
+      throw new Error(`Invalid RGB value: ${v}`)
+    }
+    return /** @type {number} */ (v)
+  }
+
+  /**
    * @param  {[number, number, number] | [RGB]} args
    */
   update(...args) {
@@ -46,9 +57,9 @@ export class RGB {
       this.g = rgb.g
       this.b = rgb.b
     } else {
-      this.r = /** @type {number} */ (r)
-      this.g = g
-      this.b = b
+      this.r = this.#validate(r)
+      this.g = this.#validate(g)
+      this.b = this.#validate(b)
     }
   }
 

@@ -102,7 +102,7 @@ export class Lightbulb extends Service {
     const getColor = interpolateRgb(this.#prevStateRGB.toString(), this.#stateRGB.toString())
 
     const frames = this.#options.transitionSpeedMs / 1000 * 60
-    const frameTime = 16.666 // 60 FPS
+    const frameTime = 16.666 // 60 ticks per second
 
     for (let i = 0; i < frames; i++) {
       if (this.#terminateTransition) {
@@ -127,41 +127,19 @@ export class Lightbulb extends Service {
   }
 
   /**
-   * @param {any} v
-   */
-  #castToFloat(v) {
-    if (v === undefined) return v
-    if (typeof v === 'number') return v
-    if (typeof v === 'string') {
-      const float = parseFloat(v)
-      if (!Number.isNaN(float)) {
-        return float
-      }
-    }
-    throw new Error(`Wrong value: ${v}`)
-  }
-
-  /**
    * @param {string} message
-   * @returns {{ h?: number; s?: number; v?: number; r?: number; g?: number; b?: number; w?: number } | null}
+   * @returns {RGB | null}
    */
   #parseMessage(message) {
-    let data = null
+    /** @type {RGB} */
+    let rgb = null
     try {
-      const { H, S, V, R, G, B, W } = JSON.parse(message)
-      data = {
-        h: this.#castToFloat(H),
-        s: this.#castToFloat(S),
-        v: this.#castToFloat(V),
-        r: this.#castToFloat(R),
-        g: this.#castToFloat(G),
-        b: this.#castToFloat(B),
-        w: this.#castToFloat(W),
-      }
+      const { R, G, B } = JSON.parse(message)
+      rgb = new RGB(parseInt(R, 10), parseInt(G, 10), parseInt(B, 10))
     } catch (e) {
       handleError(/** @type {Error} */ (e))
     }
-    return data
+    return rgb
   }
 
   /**
@@ -170,26 +148,18 @@ export class Lightbulb extends Service {
    * {"H":"296.0","S":"99.0","V":"100.0","R":238.0,"G":3.0,"B":255.0,"W":0.0}
    */
   #handleSetRGB(message) {
-    const data = this.#parseMessage(message)
+    const rgb = this.#parseMessage(message)
 
-    if (!data) {
-      handleError(`Unacceptable message: ${message}`)
-      return
-    }
-
-    /** @type {[number, number, number]} */
-    const rgb = [data.r, data.g, data.b]
-
-    if (rgb.includes(null) || rgb.includes(undefined)) {
+    if (!rgb) {
       handleError(`Unacceptable message: ${message}`)
       return
     }
 
     if (this.#switchState) {
-      this.#stateRGB.update(...rgb)
+      this.#stateRGB.update(rgb)
       this.#scheduleTransition()
     } else {
-      this.#lastStateRGB.update(...rgb)
+      this.#lastStateRGB.update(rgb)
     }
 
     this.controller.broadcast(Lightbulb.topicStateGet, this.#stateRGB.serializeMQTT())
@@ -201,6 +171,8 @@ export class Lightbulb extends Service {
    */
   #handleSwitch(message) {
     const state = message === 'true'
+
+    if (state === this.#switchState) return
 
     this.#switchState = state
 

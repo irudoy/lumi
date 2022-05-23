@@ -1,5 +1,6 @@
 import fs from 'fs'
 
+import { handleError } from '../helpers.mjs'
 import { Service } from '../Service.mjs'
 
 export class LightSensor extends Service {
@@ -34,7 +35,7 @@ export class LightSensor extends Service {
     setInterval(() => {
       fs.readFile(this.#handle, (err, data) => {
         if (err) {
-          console.error(err)
+          handleError(err)
           return
         }
         const newValue = parseInt(data.toString(), 10)

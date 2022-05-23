@@ -2,6 +2,8 @@ import EventEmitter from 'events'
 import mqtt from 'mqtt'
 import os from 'os'
 
+import { handleError } from './helpers.mjs'
+
 const mac = os.networkInterfaces().wlan0[0].mac.replace(/:/g, '').toUpperCase()
 
 /** @typedef {import('./Service.mjs').Service} Service */
@@ -44,7 +46,7 @@ export class Controller extends EventEmitter {
       console.log('MQTT Connected successfully')
       this.#client.subscribe([`${this.#rootTopic}/+/set`, `${this.#rootTopic}/+/+/set`], (err, granted) => {
         if (err) {
-          console.error(err)
+          handleError(err)
           return
         }
         console.log('Subscription granted', granted)
@@ -53,7 +55,7 @@ export class Controller extends EventEmitter {
       })
     })
 
-    this.#client.on('error', err => console.error(err))
+    this.#client.on('error', handleError)
 
     this.#client.on('message', (topic, message) => {
       console.log(`-> Got message \`${message}\` for topic \`${topic}\``)
@@ -77,7 +79,7 @@ export class Controller extends EventEmitter {
    */
   broadcast(topic, message, options = {}) {
     this.#client.publish(`${this.#rootTopic}/${topic}`, message, options, (err) => {
-      if (err) console.error('Publish failed', err)
+      if (err) handleError('Publish failed', err)
       console.log(`<- Sent message \`${message}\` for topic \`${this.#rootTopic}/${topic}\``)
     })
   }
