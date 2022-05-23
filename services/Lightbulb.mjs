@@ -219,8 +219,9 @@ export class Lightbulb extends Service {
   init() {
     this.controller.on(Lightbulb.topicStateSet, this.#handleSwitch.bind(this))
     this.controller.on(Lightbulb.topicRGBSet, this.#handleSetRGB.bind(this))
-
-    this.controller.broadcast(Lightbulb.topicStateGet, this.#switchState ? 'true' : 'false')
-    this.controller.broadcast(Lightbulb.topicRGBGet, this.#lastStateRGB.serializeMQTT())
+    this.controller.on('connect', () => {
+      this.controller.broadcast(Lightbulb.topicStateGet, this.#switchState ? 'true' : 'false')
+      this.controller.broadcast(Lightbulb.topicRGBGet, this.#lastStateRGB.serializeMQTT())
+    })
   }
 }

@@ -4,10 +4,16 @@ import { Service } from '../Service.mjs'
 
 export class Button extends Service {
   static id = 'BUTTON'
+  static topicGet = 'button'
 
   #path = '/dev/input/event0'
 
   init() {
+    // TODO
+    const config = {
+      clickDuration: 300,
+    }
+
     let t0 = 0
     let t1 = 0
     /** @type {NodeJS.Timer} */
@@ -15,11 +21,9 @@ export class Button extends Service {
     let value = 0
 
     /** @type {(value: number) => void} */
-    const publish = (value) => this.controller.broadcast('button', String(value))
+    const publish = (value) => this.controller.broadcast(Button.topicGet, String(value))
 
-    const config = {
-      clickDuration: 300,
-    }
+    this.controller.on('connect', () => this.controller.broadcast(Button.topicGet, '0'))
 
     const stream = fs.createReadStream(this.#path, {
       flags: 'r',

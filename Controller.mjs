@@ -47,10 +47,9 @@ export class Controller extends EventEmitter {
           console.error(err)
           return
         }
-
         console.log('Subscription granted', granted)
-
         this.broadcast('state', 'online', { retain: true })
+        this.emit('connect')
       })
     })
 

@@ -4,6 +4,7 @@ import { Service } from '../Service.mjs'
 
 export class LightSensor extends Service {
   static id = 'LIGHT_SENSOR'
+  static topicGet = 'illuminance'
 
   #handle = fs.openSync('/sys/bus/iio/devices/iio:device0/in_voltage5_raw', 'r')
 
@@ -14,15 +15,21 @@ export class LightSensor extends Service {
    */
   #update(value) {
     this.value = value
-    this.controller.broadcast('illuminance', String(this.value))
+    this.#broadcastCurrentValue()
+  }
+
+  #broadcastCurrentValue() {
+    this.controller.broadcast(LightSensor.topicGet, String(this.value))
   }
 
   init() {
     // TODO
     const config = {
       pollInterval: 1000,
-      threshold: 50,
+      threshold: 20,
     }
+
+    this.controller.on('connect', () => this.#broadcastCurrentValue())
 
     setInterval(() => {
       fs.readFile(this.#handle, (err, data) => {
